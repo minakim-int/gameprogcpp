@@ -10,6 +10,7 @@
 
 const int thickness = 15;
 const float paddleH = 100.0f;
+const float paddleH2 = 100.0f;
 
 Game::Game()
 :mWindow(nullptr)
@@ -66,6 +67,10 @@ bool Game::Initialize()
 	mBallPos.y = 768.0f/2.0f;
 	mBallVel.x = -200.0f;
 	mBallVel.y = 235.0f;
+	mPaddlePos2.x = 1000.0f;
+	mPaddlePos2.y = 768.0f/2.0f;
+	mBallVel2.x = -200.0f;
+	mBallVel2.y = 235.0f;
 	return true;
 }
 
@@ -103,6 +108,7 @@ void Game::ProcessInput()
 	
 	// Update paddle direction based on W/S keys
 	mPaddleDir = 0;
+	mPaddleDir2 = 0;
 	//2D PaddleDir = 0;
 	if (state[SDL_SCANCODE_W])
 	{
@@ -113,10 +119,10 @@ void Game::ProcessInput()
 		mPaddleDir += 1;
 	}
 	if (state[SDL_SCANCODE_I]) {
-		//2P PaddleDir -= 1;
+		mPaddleDir2 -= 1;
 	}
 	if (state[SDL_SCANCODE_K]) {
-		//2D PaddleDir += 1;
+		mPaddleDir2 += 1;
 	}
 }
 
@@ -153,14 +159,28 @@ void Game::UpdateGame()
 			mPaddlePos.y = 768.0f - paddleH/2.0f - thickness;
 		}
 	}
+	if (mPaddleDir2 != 0)
+	{
+		mPaddlePos2.y += mPaddleDir2 * 300.0f * deltaTime;
+		// Make sure paddle doesn't move off screen!
+		if (mPaddlePos2.y < (paddleH2/2.0f + thickness))
+		{
+			mPaddlePos2.y = paddleH2/2.0f + thickness;
+		}
+		else if (mPaddlePos2.y > (768.0f - paddleH2/2.0f - thickness))
+		{
+			mPaddlePos2.y = 768.0f - paddleH2/2.0f - thickness;
+		}
+	}
 	
 	// Update ball position based on ball velocity
 	mBallPos.x += mBallVel.x * deltaTime;
 	mBallPos.y += mBallVel.y * deltaTime;
-	
+
 	// Bounce if needed
 	// Did we intersect with the paddle?
 	float diff = mPaddlePos.y - mBallPos.y;
+	float diff2 = mPaddlePos2.y - mBallPos.y;
 	// Take absolute value of difference
 	diff = (diff > 0.0f) ? diff : -diff;
 	if (
@@ -173,15 +193,26 @@ void Game::UpdateGame()
 	{
 		mBallVel.x *= -1.0f;
 	}
+	diff2 = (diff2 > 0.0f) ? diff2 : -diff2;
+	if (
+		// Our y-difference is small enough
+		diff2 <= paddleH2 / 2.0f &&
+		// We are in the correct x-position
+		mBallPos.x <= 1005.0f && mBallPos.x >= 1000.0f &&
+		// The ball is moving to the right
+		mBallVel.x > 0.0f)
+	{
+		mBallVel.x *= -1.0f;
+	}
 	// Did the ball go off the screen? (if so, end game)
 	else if (mBallPos.x <= 0.0f)
 	{
 		mIsRunning = false;
 	}
 	// Did the ball collide with the right wall?
-	else if (mBallPos.x >= (1024.0f - thickness) && mBallVel.x > 0.0f)
+	else if (mBallPos.x >= 1024.0f)
 	{
-		mBallVel.x *= -1.0f;
+		mIsRunning = false;
 	}
 	
 	// Did the ball collide with the top wall?
@@ -228,11 +259,11 @@ void Game::GenerateOutput()
 	SDL_RenderFillRect(mRenderer, &wall);
 	
 	// Draw right wall
-	wall.x = 1024 - thickness;
-	wall.y = 0;
-	wall.w = thickness;
-	wall.h = 1024;
-	SDL_RenderFillRect(mRenderer, &wall);
+	//wall.x = 1024 - thickness;
+	//wall.y = 0;
+	//wall.w = thickness;
+	//wall.h = 1024;
+	//SDL_RenderFillRect(mRenderer, &wall);
 	
 	// Draw paddle
 	SDL_Rect paddle{
@@ -242,6 +273,13 @@ void Game::GenerateOutput()
 		static_cast<int>(paddleH)
 	};
 	SDL_RenderFillRect(mRenderer, &paddle);
+	SDL_Rect paddle2{
+		static_cast<int>(mPaddlePos2.x),
+		static_cast<int>(mPaddlePos2.y - paddleH2/2),
+		thickness,
+		static_cast<int>(paddleH2)
+	};
+	SDL_RenderFillRect(mRenderer, &paddle2);
 	
 	// Draw ball
 	SDL_Rect ball{	
